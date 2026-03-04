@@ -300,14 +300,6 @@ class _Trait(ABC):
         self.state = state
         self.config = config
 
-    def check_ack(self, challenge):
-        """Verify if acknowledgment is required and present."""
-        entity_config = self.config.entity_config.get(self.state.entity_id, {})
-        if entity_config.get(CONF_REQUIRE_ACK):
-            ack_ok = isinstance(challenge, dict) and challenge.get("ack") is True
-            if not ack_ok:
-                raise ChallengeNeeded(ack_needed=True)
-
     def check_presence(self, data: RequestData) -> None:
         """Verify if presence is required and user is present."""
         entity_config = self.config.entity_config.get(self.state.entity_id, {})
@@ -342,6 +334,14 @@ class _Trait(ABC):
                 ERR_PRESENCE_REQUIRED,
                 "This device can only be controlled when you are present at home",
             )
+
+    def check_ack(self, challenge):
+        """Verify if acknowledgment is required and present."""
+        entity_config = self.config.entity_config.get(self.state.entity_id, {})
+        if entity_config.get(CONF_REQUIRE_ACK):
+            ack_ok = isinstance(challenge, dict) and challenge.get("ack") is True
+            if not ack_ok:
+                raise ChallengeNeeded(ack_needed=True)
 
     def sync_attributes(self) -> dict[str, Any]:
         """Return attributes for a sync request."""
@@ -406,10 +406,7 @@ class BrightnessTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a brightness command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if self.state.domain == light.DOMAIN:
@@ -571,10 +568,7 @@ class OnOffTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an OnOff command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if (domain := self.state.domain) == group.DOMAIN:
@@ -669,10 +663,7 @@ class ColorSettingTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a color temperature command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if "temperature" in params["color"]:
@@ -761,10 +752,7 @@ class SceneTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a scene command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         service = SERVICE_TURN_ON
@@ -816,10 +804,7 @@ class DockTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a dock command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         domain = self.state.domain
@@ -865,10 +850,7 @@ class LocatorTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a locate command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if params.get("silence", False):
@@ -1025,10 +1007,7 @@ class StartStopTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a StartStop command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         domain = self.state.domain
@@ -1244,10 +1223,7 @@ class TemperatureControlTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a temperature point or mode command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         # All sent in temperatures are always in Celsius
@@ -1442,10 +1418,7 @@ class TemperatureSettingTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a temperature point or mode command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         # All sent in temperatures are always in Celsius
@@ -1644,10 +1617,7 @@ class HumiditySettingTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a humidity command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if self.state.domain == sensor.DOMAIN:
@@ -1702,10 +1672,7 @@ class LockUnlockTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an LockUnlock command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if params["lock"]:
@@ -1813,10 +1780,7 @@ class ArmDisArmTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an ArmDisarm command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if params["arm"] and not params.get("cancel"):
@@ -2029,10 +1993,7 @@ class FanSpeedTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a smart home command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if command == COMMAND_SET_FAN_SPEED:
@@ -2169,10 +2130,7 @@ class ModesTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a SetModes command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         settings = params.get("updateModeSettings")
@@ -2322,10 +2280,7 @@ class InputSelectorTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an SetInputSource command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         sources = self.state.attributes.get(media_player.ATTR_INPUT_SOURCE_LIST) or []
@@ -2464,10 +2419,7 @@ class OpenCloseTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an Open, close, Set position command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         domain = self.state.domain
@@ -2646,10 +2598,7 @@ class VolumeTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a volume command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         if command == COMMAND_SET_VOLUME:
@@ -2752,10 +2701,7 @@ class TransportControlTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a media command."""
-
-
         self.check_presence(data)
-
         self.check_ack(challenge)
 
         service_attrs = {ATTR_ENTITY_ID: self.state.entity_id}

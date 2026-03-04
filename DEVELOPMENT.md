@@ -346,9 +346,9 @@ When merging multiple feature branches that modify the same files, you'll get co
 ```bash
 cd /path/to/homeassistant_core
 
-# Reset integration branch to clean base (e.g., tag 2026.2.3)
+# Reset integration branch to clean base (e.g., tag 2026.3.0)
 git checkout integration/google-assistant-unleashed
-git reset --hard 2026.2.3
+git reset --hard 2026.3.0
 ```
 
 #### Step 2: Merge First Feature (require-acknowledgment)
