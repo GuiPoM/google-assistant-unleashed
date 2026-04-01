@@ -1,7 +1,7 @@
 {
   "domain": "google_assistant",
   "name": "Google Assistant Unleashed",
-  "version": "2026.3.0",
+  "version": "2026.4.0",
   "after_dependencies": ["camera", "matter"],
   "codeowners": ["@GuiPoM"],
   "dependencies": ["http"],

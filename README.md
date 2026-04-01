@@ -256,9 +256,9 @@ google_assistant:
 
 ## Compatibility
 
-- **Home Assistant**: 2026.3.0 or later
+- **Home Assistant**: 2026.4.0 or later
 - **Python**: 3.14 or later
-- Based on Home Assistant 2026.3.0 core integration
+- Based on Home Assistant 2026.4.0 core integration
 - Compatible with all Google Assistant features
 - Works alongside Home Assistant Cloud or manual Google Cloud setup
 
