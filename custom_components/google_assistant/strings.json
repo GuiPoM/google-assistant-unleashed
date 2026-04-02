@@ -1,8 +1,61 @@
 {
+  "config": {
+    "step": {
+      "user": {
+        "title": "Google Assistant Setup",
+        "description": "Enter your Google Cloud project details. See the [official documentation](https://www.home-assistant.io/integrations/google_assistant) for setup instructions.",
+        "data": {
+          "project_id": "Google Cloud Project ID",
+          "client_email": "Service account email",
+          "private_key": "Service account private key",
+          "report_state": "Enable state reporting",
+          "secure_devices_pin": "Secure devices PIN"
+        },
+        "data_description": {
+          "project_id": "The project ID from your Google Cloud Console.",
+          "client_email": "The client_email field from your service account JSON file. Required if state reporting is enabled.",
+          "private_key": "The private_key field from your service account JSON file. Required if state reporting is enabled.",
+          "report_state": "Proactively report state changes to Google. Requires a service account.",
+          "secure_devices_pin": "Optional PIN code for controlling sensitive devices (locks, garage doors, etc.)."
+        }
+      }
+    },
+    "error": {
+      "service_account_required": "A service account (email + private key) is required when state reporting is enabled."
+    }
+  },
   "entity": {
     "button": {
       "sync_devices": {
         "name": "Synchronize devices"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Entities & Presence",
+        "description": "Select which entities to expose to Google Assistant and set the global presence sensor. UI settings take priority over YAML when both are configured.",
+        "data": {
+          "presence_entity": "Global presence entity",
+          "exposed_entities": "Entities exposed to Google Assistant"
+        },
+        "data_description": {
+          "presence_entity": "Entity that tracks whether you are home (ON = home, OFF = away). Used by entities with presence requirement enabled.",
+          "exposed_entities": "Select the entities that Google Assistant can see and control. Only domains supported by Google Assistant are shown."
+        }
+      },
+      "security": {
+        "title": "Security Settings",
+        "description": "Configure security features for your {exposed_count} exposed entities.",
+        "data": {
+          "require_acknowledgment": "Require voice acknowledgment",
+          "require_presence": "Require presence"
+        },
+        "data_description": {
+          "require_acknowledgment": "Select entities that require voice confirmation (\"Are you sure?\") before executing commands via Google Assistant.",
+          "require_presence": "Select entities that should only respond to commands when you are home (based on the presence entity set in the previous step)."
+        }
       }
     }
   },
@@ -16,6 +69,16 @@
         }
       },
       "name": "Request sync"
+    },
+    "export_unleashed_config": {
+      "name": "Export unleashed config",
+      "description": "Exports the current unleashed security settings (require_acknowledgment, require_presence, presence_entity) to a YAML file in your config directory. Useful for migrating back to YAML-only configuration.",
+      "fields": {
+        "filename": {
+          "name": "Filename",
+          "description": "Name of the export file, written to your Home Assistant config directory."
+        }
+      }
     }
   }
 }
