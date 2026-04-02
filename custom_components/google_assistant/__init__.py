@@ -350,6 +350,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bo
     return True
 
 
+async def async_unload_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bool:
+    """Unload a config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
 async def _async_update_listener(hass: HomeAssistant, entry: GoogleConfigEntry) -> None:
     """Handle options update — reload the integration."""
     await hass.config_entries.async_reload(entry.entry_id)
