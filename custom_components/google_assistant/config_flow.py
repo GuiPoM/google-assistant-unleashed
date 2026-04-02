@@ -187,6 +187,13 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
         current_presence = defaults.get(CONF_REQUIRE_PRESENCE, [])
 
         exposed = self._exposed_entities
+        exposed_set = set(exposed)
+
+        # Filter defaults to only include entities that are in the exposed list.
+        # Stale entries (e.g. from YAML referencing entities that don't exist
+        # or aren't exposed) would cause validation errors.
+        current_ack = [e for e in current_ack if e in exposed_set]
+        current_presence = [e for e in current_presence if e in exposed_set]
 
         schema = vol.Schema(
             {
