@@ -74,6 +74,21 @@ def _defaults_from_yaml(hass) -> dict[str, Any]:
     }
 
 
+def _get_exposed_entity_ids(hass, config_entry: ConfigEntry) -> list[str]:
+    """Get the list of entity IDs currently exposed to Google Assistant.
+
+    Uses the GoogleConfig instance (stored as runtime_data) to check
+    which entities pass the should_expose filter.
+    """
+    google_config = config_entry.runtime_data
+    exposed: list[str] = []
+    for state in hass.states.async_all():
+        if google_config.should_expose(state):
+            exposed.append(state.entity_id)
+    exposed.sort()
+    return exposed
+
+
 class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
     """Handle Google Assistant Unleashed options."""
 
@@ -101,6 +116,9 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
         current_ack_entities = defaults.get(CONF_REQUIRE_ACK, [])
         current_presence_entities = defaults.get(CONF_REQUIRE_PRESENCE, [])
 
+        # Get entities exposed to Google Assistant for the entity selectors
+        exposed_entities = _get_exposed_entity_ids(self.hass, self.config_entry)
+
         schema = vol.Schema(
             {
                 vol.Optional(
@@ -117,6 +135,7 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
                     default=current_ack_entities,
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
+                        include_entities=exposed_entities,
                         multiple=True,
                     ),
                 ),
@@ -125,6 +144,7 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
                     default=current_presence_entities,
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
+                        include_entities=exposed_entities,
                         multiple=True,
                     ),
                 ),
@@ -134,5 +154,7 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
-            description_placeholders={},
+            description_placeholders={
+                "exposed_count": str(len(exposed_entities)),
+            },
         )

@@ -10,7 +10,7 @@
         "step": {
             "init": {
                 "title": "Security Settings",
-                "description": "Configure the Unleashed security features. These settings can also be set via YAML \u2014 UI settings take priority when both are configured.",
+                "description": "Configure the Unleashed security features for your {exposed_count} exposed entities. These settings can also be set via YAML \u2014 UI settings take priority when both are configured.",
                 "data": {
                     "presence_entity": "Global presence entity",
                     "require_acknowledgment": "Require voice acknowledgment",
