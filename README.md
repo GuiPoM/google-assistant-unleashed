@@ -209,11 +209,30 @@ When installed in `custom_components/google_assistant/`:
 
 ## Configuration
 
+The security features (`require_acknowledgment`, `require_presence`) can be configured via **UI** or **YAML** (or both).
+
+### Option A: UI Configuration (New)
+
+After installation and restart:
+
+1. Go to **Settings > Devices & Services > Google Assistant Unleashed**
+2. Click **Configure**
+3. Set the **Global presence entity** (e.g. `input_boolean.home`)
+4. Select entities that **require voice acknowledgment** ("Are you sure?" before executing)
+5. Select entities that **require presence** (blocked when you're away)
+6. Click **Submit**
+
+Changes take effect immediately (the integration reloads automatically).
+
+> **Note:** UI settings take priority over YAML for the unleashed-specific keys. All other settings (project ID, service account, expose, aliases, room, etc.) remain in YAML as before.
+
+### Option B: YAML Configuration
+
 This integration uses the exact same configuration as the official Google Assistant integration, with the addition of `require_acknowledgment` and `require_presence` options.
 
 See the [official documentation](https://www.home-assistant.io/integrations/google_assistant) for general setup, then add the new security features as needed.
 
-### Example Configuration
+### Example YAML Configuration
 
 ```yaml
 google_assistant:
@@ -253,6 +272,16 @@ google_assistant:
       expose: true
       room: Living Room
 ```
+
+### Exporting UI Config to YAML
+
+If you configured settings via the UI and want to migrate back to YAML-only (e.g. to revert to the standard integration), you can export the current unleashed settings:
+
+1. Go to **Developer Tools > Actions**
+2. Call `google_assistant.export_unleashed_config`
+3. Optionally set a custom **filename** (default: `google_assistant_unleashed_export.yaml`)
+4. The file is written to your HA config directory
+5. Merge the contents into your `google_assistant:` block in `configuration.yaml`
 
 ## Compatibility
 

@@ -6,6 +6,24 @@
             }
         }
     },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Security Settings",
+                "description": "Configure the Unleashed security features. These settings can also be set via YAML \u2014 UI settings take priority when both are configured.",
+                "data": {
+                    "presence_entity": "Global presence entity",
+                    "require_acknowledgment": "Require voice acknowledgment",
+                    "require_presence": "Require presence"
+                },
+                "data_description": {
+                    "presence_entity": "Entity that tracks whether you are home (ON = home, OFF = away). Used by entities with presence requirement enabled.",
+                    "require_acknowledgment": "Select entities that require voice confirmation (\"Are you sure?\") before executing commands via Google Assistant.",
+                    "require_presence": "Select entities that should only respond to commands when you are home (based on the presence entity above)."
+                }
+            }
+        }
+    },
     "services": {
         "request_sync": {
             "description": "Sends a request_sync command to Google.",
@@ -16,6 +34,16 @@
                 }
             },
             "name": "Request sync"
+        },
+        "export_unleashed_config": {
+            "name": "Export unleashed config",
+            "description": "Exports the current unleashed security settings (require_acknowledgment, require_presence, presence_entity) to a YAML file in your config directory. Useful for migrating back to YAML-only configuration.",
+            "fields": {
+                "filename": {
+                    "name": "Filename",
+                    "description": "Name of the export file, written to your Home Assistant config directory."
+                }
+            }
         }
     }
 }

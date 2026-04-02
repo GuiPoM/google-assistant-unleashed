@@ -2,9 +2,27 @@
 
 from typing import Any
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+import voluptuous as vol
 
-from .const import CONF_PROJECT_ID, DOMAIN
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+    OptionsFlowWithConfigEntry,
+)
+from homeassistant.core import callback
+from homeassistant.helpers import selector
+
+from .const import (
+    CONF_ENTITY_CONFIG,
+    CONF_PRESENCE_ENTITY,
+    CONF_PROJECT_ID,
+    CONF_REQUIRE_ACK,
+    CONF_REQUIRE_PRESENCE,
+    DATA_CONFIG,
+    DOMAIN,
+)
 
 
 class GoogleAssistantHandler(ConfigFlow, domain=DOMAIN):
@@ -18,4 +36,103 @@ class GoogleAssistantHandler(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         return self.async_create_entry(
             title=import_data[CONF_PROJECT_ID], data=import_data
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> OptionsFlow:
+        """Get the options flow for this handler."""
+        return GoogleAssistantOptionsFlow(config_entry)
+
+
+def _defaults_from_yaml(hass) -> dict[str, Any]:
+    """Extract unleashed defaults from the YAML config.
+
+    Reads the YAML entity_config and builds the list format used by the
+    options flow so the UI pre-populates with what's already in YAML.
+    """
+    yaml_config = hass.data.get(DOMAIN, {}).get(DATA_CONFIG, {})
+
+    presence_entity = yaml_config.get(CONF_PRESENCE_ENTITY, "")
+    entity_config: dict[str, dict] = yaml_config.get(CONF_ENTITY_CONFIG, {})
+
+    ack_entities: list[str] = []
+    presence_entities: list[str] = []
+
+    for entity_id, cfg in entity_config.items():
+        if cfg.get(CONF_REQUIRE_ACK):
+            ack_entities.append(entity_id)
+        if cfg.get(CONF_REQUIRE_PRESENCE):
+            presence_entities.append(entity_id)
+
+    return {
+        CONF_PRESENCE_ENTITY: presence_entity,
+        CONF_REQUIRE_ACK: ack_entities,
+        CONF_REQUIRE_PRESENCE: presence_entities,
+    }
+
+
+class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
+    """Handle Google Assistant Unleashed options."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the security options."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title="",
+                data={
+                    CONF_PRESENCE_ENTITY: user_input.get(CONF_PRESENCE_ENTITY, ""),
+                    CONF_REQUIRE_ACK: user_input.get(CONF_REQUIRE_ACK, []),
+                    CONF_REQUIRE_PRESENCE: user_input.get(CONF_REQUIRE_PRESENCE, []),
+                },
+            )
+
+        # If UI options exist, use them; otherwise seed from YAML config
+        if self.options:
+            defaults = dict(self.options)
+        else:
+            defaults = _defaults_from_yaml(self.hass)
+
+        current_presence = defaults.get(CONF_PRESENCE_ENTITY, "")
+        current_ack_entities = defaults.get(CONF_REQUIRE_ACK, [])
+        current_presence_entities = defaults.get(CONF_REQUIRE_PRESENCE, [])
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_PRESENCE_ENTITY,
+                    default=current_presence,
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["input_boolean", "binary_sensor"],
+                        multiple=False,
+                    ),
+                ),
+                vol.Optional(
+                    CONF_REQUIRE_ACK,
+                    default=current_ack_entities,
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        multiple=True,
+                    ),
+                ),
+                vol.Optional(
+                    CONF_REQUIRE_PRESENCE,
+                    default=current_presence_entities,
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        multiple=True,
+                    ),
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            description_placeholders={},
         )

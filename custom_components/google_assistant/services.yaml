@@ -3,3 +3,10 @@ request_sync:
     agent_user_id:
       selector:
         text:
+
+export_unleashed_config:
+  fields:
+    filename:
+      default: "google_assistant_unleashed_export.yaml"
+      selector:
+        text:

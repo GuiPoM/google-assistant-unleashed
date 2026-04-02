@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 import voluptuous as vol
+import yaml
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_API_KEY, CONF_NAME, Platform
@@ -45,6 +50,10 @@ _LOGGER = logging.getLogger(__name__)
 CONF_ALLOW_UNLOCK = "allow_unlock"
 
 PLATFORMS = [Platform.BUTTON]
+
+SERVICE_EXPORT_CONFIG = "export_unleashed_config"
+CONF_FILENAME = "filename"
+DEFAULT_EXPORT_FILENAME = "google_assistant_unleashed_export.yaml"
 
 ENTITY_SCHEMA = vol.Schema(
     {
@@ -124,6 +133,83 @@ async def async_setup(hass: HomeAssistant, yaml_config: ConfigType) -> bool:
     return True
 
 
+def _merge_options_into_config(config: ConfigType, options: Mapping[str, Any]) -> None:
+    """Merge options flow data into the YAML config.
+
+    Options flow stores unleashed settings as:
+      {
+        "presence_entity": "input_boolean.home",
+        "require_acknowledgment": ["lock.front_door", ...],
+        "require_presence": ["lock.front_door", ...],
+      }
+
+    Once the user has saved the options flow at least once, the UI becomes
+    the source of truth for unleashed keys. This means:
+    - Entities in the UI lists get the feature enabled
+    - Entities NOT in the UI lists get the feature explicitly disabled
+      (even if YAML had them enabled)
+    """
+    if not options:
+        return
+
+    # Merge global presence entity. Once the user has saved the options
+    # flow, the UI value takes priority — including clearing it.
+    if CONF_PRESENCE_ENTITY in options:
+        ui_presence = options[CONF_PRESENCE_ENTITY]
+        if ui_presence:
+            config[CONF_PRESENCE_ENTITY] = ui_presence
+        else:
+            config.pop(CONF_PRESENCE_ENTITY, None)
+
+    # Merge per-entity unleashed settings
+    ack_entities: set[str] = set(options.get(CONF_REQUIRE_ACK, []))
+    presence_entities: set[str] = set(options.get(CONF_REQUIRE_PRESENCE, []))
+
+    entity_config = config.setdefault(CONF_ENTITY_CONFIG, {})
+
+    # Apply UI state to all entities that appear in either the UI lists
+    # or the existing YAML entity_config. This ensures that removing an
+    # entity from the UI list actually disables the feature, even if YAML
+    # still has it enabled.
+    all_entities = ack_entities | presence_entities | set(entity_config.keys())
+
+    for entity_id in all_entities:
+        entity_cfg = entity_config.setdefault(entity_id, {})
+        entity_cfg[CONF_REQUIRE_ACK] = entity_id in ack_entities
+        entity_cfg[CONF_REQUIRE_PRESENCE] = entity_id in presence_entities
+
+
+def _build_export_data(config: ConfigType) -> dict[str, Any]:
+    """Build the unleashed-only config data for export.
+
+    Extracts only the unleashed-specific keys from the effective config,
+    producing a clean YAML snippet the user can merge into configuration.yaml.
+    """
+    export: dict[str, Any] = {}
+
+    if presence := config.get(CONF_PRESENCE_ENTITY):
+        export[CONF_PRESENCE_ENTITY] = presence
+
+    entity_config: dict[str, dict] = config.get(CONF_ENTITY_CONFIG, {})
+    entity_export: dict[str, dict] = {}
+
+    for entity_id, cfg in entity_config.items():
+        unleashed_cfg: dict[str, Any] = {}
+        if cfg.get(CONF_REQUIRE_ACK):
+            unleashed_cfg[CONF_REQUIRE_ACK] = True
+        if cfg.get(CONF_REQUIRE_PRESENCE):
+            unleashed_cfg[CONF_REQUIRE_PRESENCE] = True
+        if per_entity_presence := cfg.get(CONF_PRESENCE_ENTITY):
+            unleashed_cfg[CONF_PRESENCE_ENTITY] = per_entity_presence
+        if unleashed_cfg:
+            entity_export[entity_id] = unleashed_cfg
+
+    if entity_export:
+        export[CONF_ENTITY_CONFIG] = entity_export
+
+    return export
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bool:
     """Set up from a config entry."""
 
@@ -136,6 +222,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bo
             return False
 
     config.update(entry.data)
+
+    # Merge UI options into config (UI takes priority over YAML for unleashed keys)
+    _merge_options_into_config(config, entry.options)
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
@@ -176,6 +265,68 @@ async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bo
             DOMAIN, SERVICE_REQUEST_SYNC, request_sync_service_handler
         )
 
+    # Register export service (always available)
+    async def export_config_handler(call: ServiceCall) -> None:
+        """Export the current unleashed config to a YAML file."""
+        filename = call.data.get(CONF_FILENAME, DEFAULT_EXPORT_FILENAME)
+        export_path = Path(hass.config.config_dir) / filename
+
+        export_data = _build_export_data(config)
+
+        if not export_data:
+            _LOGGER.warning("No unleashed settings to export")
+            hass.components.persistent_notification.async_create(
+                "No unleashed settings configured to export.",
+                title="Google Assistant Unleashed",
+                notification_id="ga_unleashed_export",
+            )
+            return
+
+        header = (
+            "# Google Assistant Unleashed - Exported Configuration\n"
+            "# Merge these keys into your google_assistant: block\n"
+            "# in configuration.yaml to use with YAML-only config.\n"
+            "#\n"
+            f"# Exported from UI options on {datetime.now().isoformat()}\n"
+            "\n"
+        )
+
+        yaml_content = yaml.dump(
+            export_data, default_flow_style=False, allow_unicode=True, sort_keys=False
+        )
+
+        await hass.async_add_executor_job(
+            export_path.write_text, header + yaml_content, "utf-8"
+        )
+
+        _LOGGER.info("Unleashed config exported to %s", export_path)
+        hass.components.persistent_notification.async_create(
+            f"Unleashed configuration exported to `{filename}`.\n\n"
+            "Merge the contents into your `google_assistant:` block "
+            "in `configuration.yaml` to keep a portable YAML config.",
+            title="Google Assistant Unleashed",
+            notification_id="ga_unleashed_export",
+        )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_EXPORT_CONFIG,
+        export_config_handler,
+        schema=vol.Schema(
+            {
+                vol.Optional(CONF_FILENAME, default=DEFAULT_EXPORT_FILENAME): cv.string,
+            }
+        ),
+    )
+
+    # Listen for options updates and reload when changed
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: GoogleConfigEntry) -> None:
+    """Handle options update — reload the integration."""
+    await hass.config_entries.async_reload(entry.entry_id)
