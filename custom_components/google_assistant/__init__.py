@@ -12,6 +12,9 @@ import voluptuous as vol
 import yaml
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.components.persistent_notification import (
+    async_create as pn_async_create,
+)
 from homeassistant.const import CONF_API_KEY, CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv, device_registry as dr
@@ -275,7 +278,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bo
 
         if not export_data:
             _LOGGER.warning("No unleashed settings to export")
-            hass.components.persistent_notification.async_create(
+            pn_async_create(
+                hass,
                 "No unleashed settings configured to export.",
                 title="Google Assistant Unleashed",
                 notification_id="ga_unleashed_export",
@@ -300,7 +304,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bo
         )
 
         _LOGGER.info("Unleashed config exported to %s", export_path)
-        hass.components.persistent_notification.async_create(
+        pn_async_create(
+            hass,
             f"Unleashed configuration exported to `{filename}`.\n\n"
             "Merge the contents into your `google_assistant:` block "
             "in `configuration.yaml` to keep a portable YAML config.",
