@@ -158,6 +158,7 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
             step_id="init",
             data_schema=schema,
             description_placeholders={},
+            last_step=False,
         )
 
     async def async_step_security(
@@ -216,4 +217,5 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
             description_placeholders={
                 "exposed_count": str(len(exposed)),
             },
+            last_step=True,
         )
