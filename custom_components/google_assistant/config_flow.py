@@ -16,13 +16,22 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_ENTITY_CONFIG,
+    CONF_EXPOSE,
+    CONF_EXPOSE_BY_DEFAULT,
+    CONF_EXPOSED_DOMAINS,
     CONF_PRESENCE_ENTITY,
     CONF_PROJECT_ID,
     CONF_REQUIRE_ACK,
     CONF_REQUIRE_PRESENCE,
     DATA_CONFIG,
     DOMAIN,
+    DOMAIN_TO_GOOGLE_TYPES,
 )
+
+CONF_EXPOSED_ENTITIES = "exposed_entities"
+
+# Domains supported by Google Assistant
+GA_SUPPORTED_DOMAINS = sorted(DOMAIN_TO_GOOGLE_TYPES.keys())
 
 
 class GoogleAssistantHandler(ConfigFlow, domain=DOMAIN):
@@ -92,32 +101,35 @@ def _get_exposed_entity_ids(hass, config_entry: ConfigEntry) -> list[str]:
 class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
     """Handle Google Assistant Unleashed options."""
 
+    def __init__(self, config_entry: ConfigEntry) -> None:
+        """Initialize options flow."""
+        super().__init__(config_entry)
+        self._exposed_entities: list[str] = []
+        self._presence_entity: str = ""
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Manage the security options."""
+        """Step 1: Global settings and entity exposure."""
         if user_input is not None:
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_PRESENCE_ENTITY: user_input.get(CONF_PRESENCE_ENTITY, ""),
-                    CONF_REQUIRE_ACK: user_input.get(CONF_REQUIRE_ACK, []),
-                    CONF_REQUIRE_PRESENCE: user_input.get(CONF_REQUIRE_PRESENCE, []),
-                },
-            )
+            # Store step 1 data and move to step 2
+            self._exposed_entities = user_input.get(CONF_EXPOSED_ENTITIES, [])
+            self._presence_entity = user_input.get(CONF_PRESENCE_ENTITY, "")
+            return await self.async_step_security()
 
-        # If UI options exist, use them; otherwise seed from YAML config
+        # Load defaults
         if self.options:
             defaults = dict(self.options)
         else:
             defaults = _defaults_from_yaml(self.hass)
 
         current_presence = defaults.get(CONF_PRESENCE_ENTITY, "")
-        current_ack_entities = defaults.get(CONF_REQUIRE_ACK, [])
-        current_presence_entities = defaults.get(CONF_REQUIRE_PRESENCE, [])
 
-        # Get entities exposed to Google Assistant for the entity selectors
-        exposed_entities = _get_exposed_entity_ids(self.hass, self.config_entry)
+        # Get currently exposed entities
+        current_exposed = defaults.get(
+            CONF_EXPOSED_ENTITIES,
+            _get_exposed_entity_ids(self.hass, self.config_entry),
+        )
 
         schema = vol.Schema(
             {
@@ -131,20 +143,11 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
                     ),
                 ),
                 vol.Optional(
-                    CONF_REQUIRE_ACK,
-                    default=current_ack_entities,
+                    CONF_EXPOSED_ENTITIES,
+                    default=current_exposed,
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        include_entities=exposed_entities,
-                        multiple=True,
-                    ),
-                ),
-                vol.Optional(
-                    CONF_REQUIRE_PRESENCE,
-                    default=current_presence_entities,
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        include_entities=exposed_entities,
+                        domain=GA_SUPPORTED_DOMAINS,
                         multiple=True,
                     ),
                 ),
@@ -154,7 +157,63 @@ class GoogleAssistantOptionsFlow(OptionsFlowWithConfigEntry):
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
+            description_placeholders={},
+        )
+
+    async def async_step_security(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 2: Security settings for exposed entities."""
+        if user_input is not None:
+            # Combine step 1 + step 2 data and save
+            return self.async_create_entry(
+                title="",
+                data={
+                    CONF_PRESENCE_ENTITY: self._presence_entity,
+                    CONF_EXPOSED_ENTITIES: self._exposed_entities,
+                    CONF_REQUIRE_ACK: user_input.get(CONF_REQUIRE_ACK, []),
+                    CONF_REQUIRE_PRESENCE: user_input.get(CONF_REQUIRE_PRESENCE, []),
+                },
+            )
+
+        # Load defaults for step 2
+        if self.options:
+            defaults = dict(self.options)
+        else:
+            defaults = _defaults_from_yaml(self.hass)
+
+        current_ack = defaults.get(CONF_REQUIRE_ACK, [])
+        current_presence = defaults.get(CONF_REQUIRE_PRESENCE, [])
+
+        exposed = self._exposed_entities
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_REQUIRE_ACK,
+                    default=current_ack,
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        include_entities=exposed,
+                        multiple=True,
+                    ),
+                ),
+                vol.Optional(
+                    CONF_REQUIRE_PRESENCE,
+                    default=current_presence,
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        include_entities=exposed,
+                        multiple=True,
+                    ),
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="security",
+            data_schema=schema,
             description_placeholders={
-                "exposed_count": str(len(exposed_entities)),
+                "exposed_count": str(len(exposed)),
             },
         )

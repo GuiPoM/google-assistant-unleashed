@@ -56,6 +56,7 @@ PLATFORMS = [Platform.BUTTON]
 
 SERVICE_EXPORT_CONFIG = "export_unleashed_config"
 CONF_FILENAME = "filename"
+CONF_EXPOSED_ENTITIES = "exposed_entities"
 DEFAULT_EXPORT_FILENAME = "google_assistant_unleashed_export.yaml"
 
 ENTITY_SCHEMA = vol.Schema(
@@ -142,6 +143,7 @@ def _merge_options_into_config(config: ConfigType, options: Mapping[str, Any]) -
     Options flow stores unleashed settings as:
       {
         "presence_entity": "input_boolean.home",
+        "exposed_entities": ["light.living_room", "lock.front_door", ...],
         "require_acknowledgment": ["lock.front_door", ...],
         "require_presence": ["lock.front_door", ...],
       }
@@ -164,11 +166,27 @@ def _merge_options_into_config(config: ConfigType, options: Mapping[str, Any]) -
         else:
             config.pop(CONF_PRESENCE_ENTITY, None)
 
+    # Merge entity exposure. The UI list becomes the explicit expose list.
+    exposed_entities: set[str] = set(options.get(CONF_EXPOSED_ENTITIES, []))
+    entity_config = config.setdefault(CONF_ENTITY_CONFIG, {})
+
+    if CONF_EXPOSED_ENTITIES in options:
+        # Explicitly expose selected entities and unexpose all others
+        # that are in entity_config
+        for entity_id in exposed_entities:
+            entity_cfg = entity_config.setdefault(entity_id, {})
+            entity_cfg[CONF_EXPOSE] = True
+
+        for entity_id in set(entity_config.keys()) - exposed_entities:
+            entity_config[entity_id][CONF_EXPOSE] = False
+
+        # Override expose_by_default to False so only explicitly
+        # exposed entities are sent to Google
+        config[CONF_EXPOSE_BY_DEFAULT] = False
+
     # Merge per-entity unleashed settings
     ack_entities: set[str] = set(options.get(CONF_REQUIRE_ACK, []))
     presence_entities: set[str] = set(options.get(CONF_REQUIRE_PRESENCE, []))
-
-    entity_config = config.setdefault(CONF_ENTITY_CONFIG, {})
 
     # Apply UI state to all entities that appear in either the UI lists
     # or the existing YAML entity_config. This ensures that removing an
