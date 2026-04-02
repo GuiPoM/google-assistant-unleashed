@@ -4,6 +4,7 @@
   "version": "2026.4.0",
   "after_dependencies": ["camera", "matter"],
   "codeowners": ["@GuiPoM"],
+  "config_flow": true,
   "dependencies": ["http"],
   "documentation": "https://github.com/GuiPoM/google-assistant-unleashed",
   "integration_type": "hub",
