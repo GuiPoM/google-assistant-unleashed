@@ -6,7 +6,7 @@
   "codeowners": ["@GuiPoM"],
   "dependencies": ["http"],
   "documentation": "https://github.com/GuiPoM/google-assistant-unleashed",
-  "integration_type": "system",
+  "integration_type": "hub",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/GuiPoM/google-assistant-unleashed/issues"
 }
