@@ -120,10 +120,11 @@ type GoogleConfigEntry = ConfigEntry[GoogleConfig]
 
 async def async_setup(hass: HomeAssistant, yaml_config: ConfigType) -> bool:
     """Activate Google Actions component."""
+    hass.data.setdefault(DOMAIN, {})
+
     if DOMAIN not in yaml_config:
         return True
 
-    hass.data[DOMAIN] = {}
     hass.data[DOMAIN][DATA_CONFIG] = yaml_config[DOMAIN]
 
     hass.async_create_task(
@@ -234,15 +235,22 @@ def _build_export_data(config: ConfigType) -> dict[str, Any]:
 async def async_setup_entry(hass: HomeAssistant, entry: GoogleConfigEntry) -> bool:
     """Set up from a config entry."""
 
-    config: ConfigType = {**hass.data[DOMAIN][DATA_CONFIG]}
+    # Build config from either YAML (import source) or entry.data (UI source)
+    yaml_config = hass.data.get(DOMAIN, {}).get(DATA_CONFIG)
 
     if entry.source == SOURCE_IMPORT:
+        if yaml_config is None:
+            _LOGGER.error("YAML config not found for import source entry")
+            return False
+        config: ConfigType = {**yaml_config}
         # if project was changed, remove entry a new will be setup
         if config[CONF_PROJECT_ID] != entry.data[CONF_PROJECT_ID]:
             hass.async_create_task(hass.config_entries.async_remove(entry.entry_id))
             return False
-
-    config.update(entry.data)
+        config.update(entry.data)
+    else:
+        # UI-based setup: all config is in entry.data
+        config = dict(entry.data)
 
     # Merge UI options into config (UI takes priority over YAML for unleashed keys)
     _merge_options_into_config(config, entry.options)
