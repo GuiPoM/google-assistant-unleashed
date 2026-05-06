@@ -1,4 +1,4 @@
-"""Constants for Google Assistant."""
+﻿"""Constants for Google Assistant."""
 
 from homeassistant.components import (
     alarm_control_panel,
@@ -38,12 +38,15 @@ CONF_ENTITY_CONFIG = "entity_config"
 CONF_EXPOSE = "expose"
 CONF_EXPOSE_BY_DEFAULT = "expose_by_default"
 CONF_EXPOSED_DOMAINS = "exposed_domains"
+CONF_PRESENCE_ENTITY = "presence_entity"
 CONF_PRIVATE_KEY = "private_key"
 CONF_PROJECT_ID = "project_id"
 CONF_REPORT_STATE = "report_state"
+CONF_REQUIRE_PRESENCE = "require_presence"
 CONF_ROOM_HINT = "room"
 CONF_SECURE_DEVICES_PIN = "secure_devices_pin"
 CONF_SERVICE_ACCOUNT = "service_account"
+CONF_REQUIRE_ACK = "require_acknowledgment"
 
 DATA_CONFIG = "config"
 
@@ -127,6 +130,7 @@ ERR_FUNCTION_NOT_SUPPORTED = "functionNotSupported"
 ERR_NO_AVAILABLE_CHANNEL = "noAvailableChannel"
 ERR_NOT_SUPPORTED = "notSupported"
 ERR_PIN_INCORRECT = "pinIncorrect"
+ERR_PRESENCE_REQUIRED = "deviceTurnedOff"
 ERR_PROTOCOL_ERROR = "protocolError"
 ERR_TOO_MANY_FAILED_ATTEMPTS = "tooManyFailedAttempts"
 ERR_UNKNOWN_ERROR = "unknownError"

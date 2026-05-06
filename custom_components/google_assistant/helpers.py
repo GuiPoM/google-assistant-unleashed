@@ -1,4 +1,4 @@
-"""Helper classes for Google Assistant integration."""
+﻿"""Helper classes for Google Assistant integration."""
 
 from __future__ import annotations
 
@@ -137,6 +137,11 @@ class AbstractConfig(ABC):
     @abstractmethod
     def secure_devices_pin(self):
         """Return entity config."""
+
+    @property
+    @abstractmethod
+    def presence_entity(self):
+        """Return presence entity ID."""
 
     @property
     def is_reporting_state(self):

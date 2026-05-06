@@ -1,11 +1,11 @@
-"""Implement the Google Smart Home traits."""
+﻿"""Implement the Google Smart Home traits."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from homeassistant.components import (
     alarm_control_panel,
@@ -68,7 +68,9 @@ from homeassistant.const import (
     SERVICE_ALARM_TRIGGER,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
+    STATE_HOME,
     STATE_IDLE,
+    STATE_NOT_HOME,
     STATE_OFF,
     STATE_ON,
     STATE_PAUSED,
@@ -91,6 +93,9 @@ from homeassistant.util.unit_conversion import TemperatureConverter
 from .const import (
     CHALLENGE_FAILED_PIN_NEEDED,
     CHALLENGE_PIN_NEEDED,
+    CONF_PRESENCE_ENTITY,
+    CONF_REQUIRE_PRESENCE,
+    CONF_REQUIRE_ACK,
     ERR_ALREADY_ARMED,
     ERR_ALREADY_DISARMED,
     ERR_ALREADY_STOPPED,
@@ -98,11 +103,15 @@ from .const import (
     ERR_FUNCTION_NOT_SUPPORTED,
     ERR_NO_AVAILABLE_CHANNEL,
     ERR_NOT_SUPPORTED,
+    ERR_PRESENCE_REQUIRED,
     ERR_UNSUPPORTED_INPUT,
     ERR_VALUE_OUT_OF_RANGE,
     FAN_SPEEDS,
 )
 from .error import ChallengeNeeded, SmartHomeError
+
+if TYPE_CHECKING:
+    from .helpers import RequestData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -291,6 +300,48 @@ class _Trait(ABC):
         self.state = state
         self.config = config
 
+    def check_presence(self, data: RequestData) -> None:
+        """Verify if presence is required and user is present."""
+        entity_config = self.config.entity_config.get(self.state.entity_id, {})
+
+        # Check if presence is required for this entity
+        if not entity_config.get(CONF_REQUIRE_PRESENCE):
+            return
+
+        # Get presence entity (per-entity or global)
+        presence_entity_id = entity_config.get(CONF_PRESENCE_ENTITY)
+        if not presence_entity_id:
+            # Try global presence entity
+            presence_entity_id = data.config.presence_entity
+
+        if not presence_entity_id:
+            # require_presence is True but no presence entity configured
+            # Allow command (fail-open for safety)
+            return
+
+        # Check presence entity state
+        presence_state = self.hass.states.get(presence_entity_id)
+        if not presence_state:
+            # Presence entity not found, fail-open
+            return
+
+        # Check if user is away
+        # Support input_boolean and binary_sensor - check if state is "off"
+        is_away = presence_state.state == STATE_OFF
+
+        if is_away:
+            raise SmartHomeError(
+                ERR_PRESENCE_REQUIRED,
+                "This device can only be controlled when you are present at home",
+            )
+    def check_ack(self, challenge):
+        """Verify if acknowledgment is required and present."""
+        entity_config = self.config.entity_config.get(self.state.entity_id, {})
+        if entity_config.get(CONF_REQUIRE_ACK):
+            ack_ok = isinstance(challenge, dict) and challenge.get("ack") is True
+            if not ack_ok:
+                raise ChallengeNeeded(ack_needed=True)
+
     def sync_attributes(self) -> dict[str, Any]:
         """Return attributes for a sync request."""
         raise NotImplementedError
@@ -312,6 +363,8 @@ class _Trait(ABC):
 
     async def execute(self, command, data, params, challenge):
         """Execute a trait command."""
+        self.check_presence(data)
+
         raise NotImplementedError
 
 
@@ -352,6 +405,10 @@ class BrightnessTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a brightness command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if self.state.domain == light.DOMAIN:
             await self.hass.services.async_call(
                 light.DOMAIN,
@@ -399,6 +456,8 @@ class CameraStreamTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a get camera stream command."""
+        self.check_presence(data)
+
         url = await camera.async_request_stream(self.hass, self.state.entity_id, "hls")
         self.stream_info = {
             "cameraStreamAccessUrl": f"{get_url(self.hass)}{url}",
@@ -464,6 +523,8 @@ class ObjectDetection(_Trait):
         """Execute an ObjectDetection command."""
 
 
+        self.check_presence(data)
+
 @register_trait
 class OnOffTrait(_Trait):
     """Trait to offer basic on and off functionality.
@@ -507,6 +568,10 @@ class OnOffTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an OnOff command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if (domain := self.state.domain) == group.DOMAIN:
             service_domain = HOMEASSISTANT_DOMAIN
             service = SERVICE_TURN_ON if params["on"] else SERVICE_TURN_OFF
@@ -599,6 +664,10 @@ class ColorSettingTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a color temperature command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if "temperature" in params["color"]:
             temp = params["color"]["temperature"]
             max_temp = self.state.attributes[light.ATTR_MAX_COLOR_TEMP_KELVIN]
@@ -685,6 +754,10 @@ class SceneTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a scene command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         service = SERVICE_TURN_ON
         if self.state.domain == button.DOMAIN:
             service = button.SERVICE_PRESS
@@ -734,6 +807,10 @@ class DockTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a dock command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         domain = self.state.domain
         service: str | None = None
 
@@ -777,6 +854,10 @@ class LocatorTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a locate command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if params.get("silence", False):
             raise SmartHomeError(
                 ERR_FUNCTION_NOT_SUPPORTED,
@@ -841,6 +922,8 @@ class EnergyStorageTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a dock command."""
+        self.check_presence(data)
+
         raise SmartHomeError(
             ERR_FUNCTION_NOT_SUPPORTED,
             "Controlling charging of a vacuum is not yet supported",
@@ -929,6 +1012,10 @@ class StartStopTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a StartStop command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         domain = self.state.domain
         if domain == vacuum.DOMAIN:
             await self._execute_vacuum(command, data, params, challenge)
@@ -1144,6 +1231,10 @@ class TemperatureControlTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a temperature point or mode command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         # All sent in temperatures are always in Celsius
         domain = self.state.domain
         unit = self.hass.config.units.temperature_unit
@@ -1338,6 +1429,10 @@ class TemperatureSettingTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a temperature point or mode command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         # All sent in temperatures are always in Celsius
         unit = self.hass.config.units.temperature_unit
         min_temp = self.state.attributes[climate.ATTR_MIN_TEMP]
@@ -1534,6 +1629,10 @@ class HumiditySettingTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a humidity command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if self.state.domain == sensor.DOMAIN:
             raise SmartHomeError(
                 ERR_NOT_SUPPORTED, "Execute is not supported by sensor"
@@ -1586,6 +1685,10 @@ class LockUnlockTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an LockUnlock command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if params["lock"]:
             service = lock.SERVICE_LOCK
         else:
@@ -1691,6 +1794,10 @@ class ArmDisArmTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an ArmDisarm command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if params["arm"] and not params.get("cancel"):
             # If no arm level given, we we arm the first supported
             # level in state_to_support.
@@ -1901,6 +2008,10 @@ class FanSpeedTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a smart home command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if command == COMMAND_SET_FAN_SPEED:
             await self.execute_fanspeed(data, params)
         elif command == COMMAND_REVERSE:
@@ -2035,6 +2146,10 @@ class ModesTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a SetModes command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         settings = params.get("updateModeSettings")
 
         if self.state.domain == fan.DOMAIN:
@@ -2182,6 +2297,10 @@ class InputSelectorTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an SetInputSource command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         sources = self.state.attributes.get(media_player.ATTR_INPUT_SOURCE_LIST) or []
         source = self.state.attributes.get(media_player.ATTR_INPUT_SOURCE)
 
@@ -2318,6 +2437,10 @@ class OpenCloseTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an Open, close, Set position command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         domain = self.state.domain
         features = self.state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
 
@@ -2494,6 +2617,10 @@ class VolumeTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a volume command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         if command == COMMAND_SET_VOLUME:
             await self._execute_set_volume(data, params)
         elif command == COMMAND_VOLUME_RELATIVE:
@@ -2512,10 +2639,13 @@ def _verify_pin_challenge(data, state, challenge):
         raise SmartHomeError(ERR_CHALLENGE_NOT_SETUP, "Challenge is not set up")
 
     if not challenge:
-        raise ChallengeNeeded(CHALLENGE_PIN_NEEDED)
+        raise ChallengeNeeded(pin_needed=True)
 
     if challenge.get("pin") != data.config.secure_devices_pin:
-        raise ChallengeNeeded(CHALLENGE_FAILED_PIN_NEEDED)
+        # Pass pin_needed=True and specify the challenge type for input error
+        raise ChallengeNeeded(
+            pin_needed=True, challenge_type=CHALLENGE_FAILED_PIN_NEEDED
+        )
 
 
 MEDIA_COMMAND_SUPPORT_MAPPING = {
@@ -2591,6 +2721,10 @@ class TransportControlTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute a media command."""
+        self.check_presence(data)
+
+        self.check_ack(challenge)
+
         service_attrs = {ATTR_ENTITY_ID: self.state.entity_id}
 
         if command == COMMAND_MEDIA_SEEK_RELATIVE:
@@ -2728,6 +2862,8 @@ class ChannelTrait(_Trait):
 
     async def execute(self, command, data, params, challenge):
         """Execute an setChannel command."""
+        self.check_presence(data)
+
         if command == COMMAND_SELECT_CHANNEL:
             channel_number = params.get("channelNumber")
         else:

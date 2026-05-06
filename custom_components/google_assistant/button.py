@@ -1,4 +1,4 @@
-"""Support for buttons."""
+﻿"""Support for buttons."""
 
 from __future__ import annotations
 

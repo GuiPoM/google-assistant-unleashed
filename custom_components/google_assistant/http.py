@@ -1,4 +1,4 @@
-"""Support for Google Actions Smart Home Control."""
+﻿"""Support for Google Actions Smart Home Control."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ from .const import (
     CONF_EXPOSE,
     CONF_EXPOSE_BY_DEFAULT,
     CONF_EXPOSED_DOMAINS,
+    CONF_PRESENCE_ENTITY,
     CONF_PRIVATE_KEY,
     CONF_REPORT_STATE,
     CONF_SECURE_DEVICES_PIN,
@@ -115,6 +116,11 @@ class GoogleConfig(AbstractConfig):
     def secure_devices_pin(self):
         """Return entity config."""
         return self._config.get(CONF_SECURE_DEVICES_PIN)
+
+    @property
+    def presence_entity(self):
+        """Return presence entity ID."""
+        return self._config.get(CONF_PRESENCE_ENTITY)
 
     @property
     def should_report_state(self):
@@ -283,7 +289,7 @@ class GoogleConfig(AbstractConfig):
         except ClientResponseError as error:
             _LOGGER.error("Request for %s failed: %d", url, error.status)
             return error.status
-        except TimeoutError, ClientError:
+        except (TimeoutError, ClientError):
             _LOGGER.error("Could not contact %s", url)
             return HTTPStatus.INTERNAL_SERVER_ERROR
 
