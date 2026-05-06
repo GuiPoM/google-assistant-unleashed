@@ -1,0 +1,13 @@
+{
+  "domain": "google_assistant",
+  "name": "Google Assistant Unleashed",
+  "version": "2026.5.0",
+  "after_dependencies": ["camera", "matter"],
+  "codeowners": ["@GuiPoM"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/GuiPoM/google-assistant-unleashed",
+  "integration_type": "hub",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/GuiPoM/google-assistant-unleashed/issues"
+}
