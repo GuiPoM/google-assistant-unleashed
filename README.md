@@ -1,6 +1,6 @@
 # Google Assistant Unleashed 🚀
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![Install via HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=GuiPoM&repository=google-assistant-unleashed&category=integration)
 [![GitHub release](https://img.shields.io/github/release/GuiPoM/google-assistant-unleashed.svg)](https://github.com/GuiPoM/google-assistant-unleashed/releases)
 
 **A fork of the [official Home Assistant Google Assistant integration](https://www.home-assistant.io/integrations/google_assistant) with enhanced security features.**
@@ -187,25 +187,29 @@ When installed in `custom_components/google_assistant/`:
 
 **Note:** You cannot have both the official and custom version active simultaneously. Home Assistant only loads one integration per domain, and custom components take priority.
 
-### Via HACS (Recommended)
+## Installation
 
-1. Open HACS in your Home Assistant
-2. Click on "Integrations"
-3. Click the three dots in the top right corner
-4. Select "Custom repositories"
-5. Add this repository URL: `https://github.com/GuiPoM/google-assistant-unleashed`
-6. Select category: "Integration"
-7. Click "Add"
-8. Search for "Google Assistant Unleashed"
-9. Click "Download"
-10. Restart Home Assistant
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=GuiPoM&repository=google-assistant-unleashed&category=integration)
 
-### Manual Installation
+<details>
+<summary>Install via HACS (manual steps)</summary>
+
+1. In HACS, go to **Integrations** → three-dot menu → **Custom repositories**
+2. Add `https://github.com/GuiPoM/google-assistant-unleashed` — type **Integration**
+3. Search for **Google Assistant Unleashed** and click **Download**
+4. Restart Home Assistant
+
+</details>
+
+<details>
+<summary>Manual installation</summary>
 
 1. Download the latest release from [Releases](https://github.com/GuiPoM/google-assistant-unleashed/releases)
 2. Extract the `google_assistant` folder from the zip
 3. Copy it to your `<config>/custom_components/` directory
 4. Restart Home Assistant
+
+</details>
 
 ## Configuration
 
