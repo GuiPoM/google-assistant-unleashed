@@ -1,6 +1,5 @@
 # Google Assistant Unleashed 🚀
 
-[![Install via HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=GuiPoM&repository=google-assistant-unleashed&category=integration)
 [![GitHub release](https://img.shields.io/github/release/GuiPoM/google-assistant-unleashed.svg)](https://github.com/GuiPoM/google-assistant-unleashed/releases)
 
 **A fork of the [official Home Assistant Google Assistant integration](https://www.home-assistant.io/integrations/google_assistant) with enhanced security features.**
