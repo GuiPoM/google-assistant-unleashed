@@ -1,3 +1,14 @@
+## [2026.7.0] - 2026-06-16
+
+### Changed
+- Based on Home Assistant 2026.7.0
+
+### Upstream changes included
+- All files: Add `@override` decorators throughout all subclasses (Python 3.12+ `typing.override`)
+- `const.py`: Map projector media players to Google TV device type
+- `trait.py`: `StartStopTrait` — support vacuum zone cleaning via area registry
+- `trait.py`: `ChannelTrait` — support `MediaPlayerDeviceClass.PROJECTOR`
+
 ## [2026.6.0] - 2026-06-04
 
 ### Changed
