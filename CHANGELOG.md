@@ -1,3 +1,12 @@
+## [2026.8.0] - 2026-08-06
+
+### Changed
+- Based on Home Assistant 2026.8.0
+
+### Upstream changes included
+- `__init__.py`: Move `request_sync` service registration to new `services.py` module
+- `services.py`: New file — dedicated service registration module
+
 ## [2026.7.0] - 2026-06-16
 
 ### Changed
