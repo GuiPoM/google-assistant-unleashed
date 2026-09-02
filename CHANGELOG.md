@@ -1,3 +1,13 @@
+## [2026.9.0] - 2026-09-02
+
+### Changed
+- Based on Home Assistant 2026.9.0
+
+### Upstream changes included
+- `const.py`: Replace `component.DOMAIN` references with dedicated `DOMAIN` constants per component
+- `helpers.py`: Use `EntityStateAttribute` enum instead of `ATTR_DEVICE_CLASS` / `ATTR_SUPPORTED_FEATURES`; use `er.async_get_effective_area_id`; use `dr.AnyDeviceEntry`; skip `deviceInfo` for child devices
+- `trait.py`: Pervasive use of `EntityStateAttribute`, `MediaPlayerEntityStateAttribute`, `MediaPlayerEntityCapabilityAttribute` and `*_DOMAIN` constants throughout
+
 ## [2026.8.0] - 2026-08-06
 
 ### Changed
