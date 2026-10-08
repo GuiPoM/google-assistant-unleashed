@@ -1,3 +1,13 @@
+## [2026.10.0] - 2026-10-08
+
+### Changed
+- Based on Home Assistant 2026.10.0
+
+### Upstream changes included
+- `__init__.py`: Migrate from `voluptuous` to `probatio` for schema validation; rename `async_register_services` → `async_setup_services`
+- `services.py`: Rename `async_register_services` → `async_setup_services`
+- `trait.py`: Add `queryOnlyTemperatureSetting` flag in `TemperatureSettingTrait` for climate entities without setpoint control
+
 ## [2026.9.0] - 2026-09-02
 
 ### Changed
